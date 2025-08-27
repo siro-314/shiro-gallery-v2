@@ -1,0 +1,28 @@
+{
+    "name": "shiro-gallery-v2",
+    "version": "2.0.0",
+    "description": "シロの保管庫 - イラスト・動画ギャラリーサイト（グラスモーフィズム + Next.js）",
+    "private": true,
+    "scripts": {
+          "dev": "next dev",
+          "build": "next build",
+          "start": "next start",
+          "lint": "next lint"
+    },
+    "dependencies": {
+          "next": "15.0.0",
+          "react": "^19.0.0",
+          "react-dom": "^19.0.0"
+    },
+    "devDependencies": {
+          "@types/node": "^22.0.0",
+          "@types/react": "^19.0.0",
+          "@types/react-dom": "^19.0.0",
+          "eslint": "^8.57.0",
+          "eslint-config-next": "15.0.0",
+          "typescript": "^5.5.0"
+    },
+    "engines": {
+          "node": ">=18.0.0"
+    }
+}
