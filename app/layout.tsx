@@ -29,13 +29,3 @@ export default function RootLayout({
                                                                                 <h1 className="text-2xl font-bold text-center text-glass-text">
                                                                                                 シロの保管庫
                                                                                               </h1>h1>
-                                                                              </div>div>
-                                                                </header>header>
-                                                      <main className="container mx-auto px-4 pb-8">
-                                                                  {children}
-                                                                </main>main>
-                                                    </div>div>
-                                          </body>body>
-                                  </html>html>
-                            )
-}</html>
