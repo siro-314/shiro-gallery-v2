@@ -32,10 +32,4 @@ export default function RootLayout({
                                                                               </div>div>
                                                                 </header>header>
                                                       <main className="container mx-auto px-4 pb-8">
-                                                                  {children}
-                                                                </main>main>
-                                                    </div>div>
-                                          </body>body>
-                                  </html>
-                            )
-}</html>
+                                                                  {children
