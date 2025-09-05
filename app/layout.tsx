@@ -29,7 +29,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <h1 className="text-2xl font-bold text-center text-glass-text">
                 シロの保管庫
               </h1>
-            </div>          </header>
+            </div>
+          </header>
           <main className="container mx-auto px-4 pb-8">
             {children}
           </main>
