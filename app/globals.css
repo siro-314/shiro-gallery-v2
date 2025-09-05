@@ -28,13 +28,13 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-          --bg-gradient-start: var(--dark-bg-gradient-start);
-          --bg-gradient-end: var(--dark-bg-gradient-end);
-          --card-bg: var(--dark-card-bg);
-          --card-border: var(--dark-card-border);
-          --text-primary: var(--dark-text-primary);
-          --text-secondary: var(--dark-text-secondary);
-          --shadow: var(--dark-shadow);
+        --bg-gradient-start: var(--dark-bg-gradient-start);
+        --bg-gradient-end: var(--dark-bg-gradient-end);
+        --card-bg: var(--dark-card-bg);
+        --card-border: var(--dark-card-border);
+        --text-primary: var(--dark-text-primary);
+        --text-secondary: var(--dark-text-secondary);
+        --shadow: var(--dark-shadow);
     }
 }
 
@@ -43,22 +43,26 @@ body {
     background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
     min-height: 100vh;
     color: var(--text-primary);
-}import type { Metadata } from 'next'
-import './globals.css'
-
-export const metadata: Metadata = {
-    title: 'シロの保管庫',
-    description: 'イラスト・動画ギャラリーサイト（グラスモーフィズム + Next.js）',
 }
 
-export default function RootLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
-    return (
-          <html lang="ja">
-                <body>{children}</body>body>
-              </html>html>
-        )
-}</html>
+/* グラスモーフィズムカード */
+.glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px var(--shadow);
+}
+
+.glass-text {
+    color: var(--text-primary);
+}
+
+.glass-border {
+    border-color: var(--card-border);
+}
+
+.bg-gradient {
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+}
