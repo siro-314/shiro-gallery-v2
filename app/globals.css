@@ -1,68 +1,467 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
 
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 :root {
-    /* ライトモード */
-    --bg-gradient-start: #faf8f5;
-    --bg-gradient-end: #f5f0e8;
-    --card-bg: rgba(255, 255, 255, 0.25);
-    --card-border: rgba(255, 255, 255, 0.18);
-    --text-primary: #2d2d2d;
-    --text-secondary: #6b6b6b;
-    --shadow: rgba(0, 0, 0, 0.1);
-    
-    /* ダークモード */
-    --dark-bg-gradient-start: #1a1614;
-    --dark-bg-gradient-end: #2a251f;
-    --dark-card-bg: rgba(255, 255, 255, 0.1);
-    --dark-card-border: rgba(255, 255, 255, 0.08);
-    --dark-text-primary: #f5f5f5;
-    --dark-text-secondary: #a0a0a0;
-    --dark-shadow: rgba(0, 0, 0, 0.3);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-gradient-start: var(--dark-bg-gradient-start);
-        --bg-gradient-end: var(--dark-bg-gradient-end);
-        --card-bg: var(--dark-card-bg);
-        --card-border: var(--dark-card-border);
-        --text-primary: var(--dark-text-primary);
-        --text-secondary: var(--dark-text-secondary);
-        --shadow: var(--dark-shadow);
-    }
+  /* ライトモード - Claude風温かい色調 */
+  --bg-gradient-start: #faf8f3;
+  --bg-gradient-end: #f5f2eb;
+  --warm-brown: #6b5b4d;
+  --warm-beige: #9b8a7a;
+  --warm-light: #f0e6d2;
+  --warm-lighter: #e8ddc7;
+  
+  /* ダークモード */
+  --dark-bg-gradient-start: #2d2a26;
+  --dark-bg-gradient-end: #3a352f;
+  --dark-warm-brown: #d4c4b0;
+  --dark-warm-beige: #c0b5a5;
+  --dark-warm-light: #4a453f;
+  --dark-warm-lighter: #5a554f;
 }
 
 body {
-    font-family: 'Inter', 'Noto Sans JP', sans-serif;
-    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-    min-height: 100vh;
-    color: var(--text-primary);
+  font-family: 'Inter', 'Noto Sans JP', sans-serif;
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+  color: var(--warm-brown);
+  min-height: 100vh;
+  line-height: 1.6;
+  transition: all 0.3s ease;
 }
 
-/* グラスモーフィズムカード */
-.glass-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--card-border);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px var(--shadow);
+.dark body {
+  background: linear-gradient(135deg, var(--dark-bg-gradient-start) 0%, var(--dark-bg-gradient-end) 100%);
+  color: var(--dark-warm-brown);
 }
 
-.glass-text {
-    color: var(--text-primary);
+/* ヘッダー */
+.header {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
-.glass-border {
-    border-color: var(--card-border);
+.dark .header {
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.bg-gradient {
-    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: var(--warm-brown);
+  margin-bottom: 1rem;
+  letter-spacing: 0.05em;
+}
+
+.dark .header h1 {
+  color: var(--dark-warm-brown);
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.control-group {
+  position: relative;
+}
+
+.btn {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 2rem;
+  padding: 0.75rem 1.5rem;
+  color: var(--warm-brown);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.dark .btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--dark-warm-brown);
+}
+
+.dark .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ドロップダウン */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 1rem;
+  margin-top: 0.5rem;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+.dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dark .dropdown {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item {
+  padding: 0.75rem 1.5rem;
+  color: var(--warm-brown);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 0.8rem;
+  margin: 0.25rem;
+}
+
+.dropdown-item:hover {
+  background: rgba(107, 91, 77, 0.1);
+}
+
+.dropdown-item.active {
+  background: rgba(107, 91, 77, 0.15);
+  font-weight: 600;
+}
+
+.dark .dropdown-item {
+  color: var(--dark-warm-brown);
+}
+
+/* ギャラリー */
+.gallery {
+  padding: 2rem 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.gallery-info {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: var(--warm-beige);
+  font-size: 0.95rem;
+}
+
+.dark .gallery-info {
+  color: var(--dark-warm-beige);
+}
+
+.image-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.image-card {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.image-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.image-card.landscape {
+  grid-column: span 2;
+}
+
+.image-placeholder {
+  aspect-ratio: 768/1088;
+  background: linear-gradient(135deg, var(--warm-light) 0%, var(--warm-lighter) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warm-beige);
+  font-size: 0.9rem;
+  font-weight: 500;
+  width: 100%;
+  height: 100%;
+}
+
+.image-card.landscape .image-placeholder {
+  aspect-ratio: 1088/768;
+}
+
+.dark .image-placeholder {
+  background: linear-gradient(135deg, var(--dark-warm-light) 0%, var(--dark-warm-lighter) 100%);
+  color: var(--dark-warm-beige);
+}
+
+.image-text {
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* カレンダーモーダル */
+.calendar-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.calendar-modal.show {
+  display: flex;
+}
+
+.calendar-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 2rem;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+
+.dark .calendar-content {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.calendar-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-header h3 {
+  color: var(--warm-brown);
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-bottom: 1rem;
+}
+
+.dark .calendar-header h3 {
+  color: var(--dark-warm-brown);
+}
+
+.year-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.year-btn, .month-btn {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  color: var(--warm-brown);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.year-btn:hover, .year-btn.active,
+.month-btn:hover, .month-btn.active {
+  background: rgba(107, 91, 77, 0.1);
+  border-color: rgba(107, 91, 77, 0.3);
+}
+
+.dark .year-btn, .dark .month-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--dark-warm-brown);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.month-btn {
+  font-size: 0.9rem;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--warm-brown);
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.1);
+}
+
+.dark .close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--dark-warm-brown);
+}
+
+/* 画像拡大モーダル */
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  cursor: pointer;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 95vw;
+  max-height: 95vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expanded-image {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.image-placeholder-large {
+  background: linear-gradient(135deg, var(--warm-light) 0%, var(--warm-lighter) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warm-beige);
+  font-size: 1.2rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.dark .image-placeholder-large {
+  background: linear-gradient(135deg, var(--dark-warm-light) 0%, var(--dark-warm-lighter) 100%);
+  color: var(--dark-warm-beige);
+}
+
+.image-text-large {
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* モーダルコントロール */
+.modal-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  color: var(--warm-brown);
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 2001;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+}
+
+.comment-overlay {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  max-width: 300px;
+  z-index: 2001;
+}
+
+.comment-text {
+  color: white;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 1200px) {
+  .image-grid { grid-template-columns: repeat(4, 1fr) !important; }
+  .image-card.landscape { grid-column: span 2; }
+}
+
+@media (max-width: 768px) {
+  .header h1 { font-size: 2rem; }
+  .controls { gap: 0.75rem; }
+  .btn { padding: 0.6rem 1.2rem; font-size: 0.9rem; }
+  .image-grid { 
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem;
+  }
+  .image-card.landscape { grid-column: span 2; }
+  .calendar-content { padding: 1.5rem; }
+  .image-placeholder-large {
+    cursor: pointer;
+  }
 }
