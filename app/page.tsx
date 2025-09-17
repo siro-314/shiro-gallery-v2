@@ -1,39 +1,58 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-
-// 画像データ型
-interface ImageData {
-  id: string
-  year: string
-  filename: string
-  comment?: string
-  width: number
-  height: number
-}
-
-// モックデータ
-const mockImages: ImageData[] = [
-  { id: '2024-001', year: '2024', filename: '001.jpg', comment: 'サンプル画像1', width: 768, height: 1088 },
-  { id: '2024-002', year: '2024', filename: '002.jpg', comment: 'サンプル画像2', width: 1088, height: 768 },
-  { id: '2024-003', year: '2024', filename: '003.jpg', comment: 'サンプル画像3', width: 768, height: 1088 },
-  { id: '2024-004', year: '2024', filename: '004.jpg', comment: 'サンプル画像4', width: 768, height: 1088 },
-  { id: '2024-005', year: '2024', filename: '005.jpg', comment: 'サンプル画像5', width: 1088, height: 768 },
-  { id: '2024-006', year: '2024', filename: '006.jpg', comment: 'サンプル画像6', width: 768, height: 1088 },
-  { id: '2024-007', year: '2024', filename: '007.jpg', comment: 'サンプル画像7', width: 768, height: 1088 },
-  { id: '2024-008', year: '2024', filename: '008.jpg', comment: 'サンプル画像8', width: 1088, height: 768 },
-]
+import { useArtworks, useAvailableMonths } from './hooks/useArtworks'
+import { useStaticData } from './hooks/useStaticData'
+import { Artwork } from './lib/types'
 
 export default function Gallery() {
-  const [images] = useState<ImageData[]>(mockImages)
   const [columns, setColumns] = useState(3)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<ImageData | null>(null)
+  const [selectedImage, setSelectedImage] = useState<Artwork | null>(null)
   const [showColumnDropdown, setShowColumnDropdown] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
-  const [selectedYear, setSelectedYear] = useState(2024)
-  const [selectedMonth, setSelectedMonth] = useState(9)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [targetMonth, setTargetMonth] = useState<string | undefined>()
   const [showModalControls, setShowModalControls] = useState(true)
+
+  // 環境に応じたデータ取得方法を選択
+  const isProduction = process.env.NODE_ENV === 'production'
+  
+  // 動的データ取得（開発環境）
+  const dynamicData = useArtworks({ 
+    month: targetMonth,
+    autoFetch: !isProduction 
+  })
+  const dynamicMonths = useAvailableMonths()
+  
+  // 静的データ取得（本番環境）
+  const staticData = useStaticData()
+  
+  // 環境に応じてデータソースを切り替え
+  const {
+    artworks: allArtworks,
+    loading,
+    error,
+    refresh
+  } = isProduction ? {
+    artworks: staticData.artworks,
+    loading: staticData.loading,
+    error: staticData.error,
+    refresh: staticData.refresh
+  } : {
+    artworks: dynamicData.artworks,
+    loading: dynamicData.loading,
+    error: dynamicData.error,
+    refresh: dynamicData.refresh
+  }
+  
+  const { months, years } = isProduction ? staticData : dynamicMonths
+  
+  // 月フィルタリング（本番環境用）
+  const artworks = isProduction 
+    ? staticData.getArtworksByMonth(targetMonth)
+    : allArtworks
 
   // レスポンシブ対応
   useEffect(() => {
@@ -50,6 +69,13 @@ export default function Gallery() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // 年の初期化
+  useEffect(() => {
+    if (years.length > 0 && !years.includes(selectedYear)) {
+      setSelectedYear(years[0])
+    }
+  }, [years, selectedYear])
 
   // ESC・クリックでモーダル/ドロップダウンを閉じる
   useEffect(() => {
@@ -80,7 +106,32 @@ export default function Gallery() {
   }, [])
 
   // 横長画像かどうかを判定
-  const isLandscape = (image: ImageData) => image.width > image.height
+  const isLandscape = (artwork: Artwork) => {
+    if (!artwork.dimensions) return false
+    return artwork.dimensions.width > artwork.dimensions.height
+  }
+
+  // 月ジャンプ処理
+  const jumpToMonth = (year: number, month: number) => {
+    const yearMonth = `${year}-${month.toString().padStart(2, '0')}`
+    setTargetMonth(yearMonth)
+    setSelectedYear(year)
+    setSelectedMonth(month)
+    setShowCalendar(false)
+    
+    // 該当する月にスクロール
+    setTimeout(() => {
+      const element = document.querySelector(`[data-month="${yearMonth}"]`)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
+  }
+
+  // 全表示に戻る
+  const showAllArtworks = () => {
+    setTargetMonth(undefined)
+  }
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
@@ -128,6 +179,27 @@ export default function Gallery() {
               月
             </button>
             
+            {/* 全表示ボタン */}
+            {targetMonth && (
+              <button 
+                className="btn"
+                onClick={showAllArtworks}
+                title="全ての作品を表示"
+              >
+                全表示
+              </button>
+            )}
+            
+            {/* リフレッシュボタン */}
+            <button 
+              className="btn"
+              onClick={refresh}
+              disabled={loading}
+              title="データを更新"
+            >
+              {loading ? '🔄' : '↻'}
+            </button>
+            
             {/* テーマ切替 */}
             <button 
               className="btn"
@@ -140,31 +212,80 @@ export default function Gallery() {
 
         {/* ギャラリー */}
         <main className="gallery">
+          {/* 状態表示 */}
           <div className="gallery-info">
-            総画像数: {images.length}
+            {loading && <span>読み込み中...</span>}
+            {error && (
+              <span className="error" style={{ color: '#ef4444' }}>
+                エラー: {error}
+              </span>
+            )}
+            {!loading && !error && (
+              <>
+                総画像数: {artworks.length}
+                {targetMonth && (
+                  <span className="filtered-info">
+                    {' '}({targetMonth} のみ表示中)
+                  </span>
+                )}
+              </>
+            )}
           </div>
           
-          <div 
-            className="image-grid"
-            style={{
-              gridTemplateColumns: `repeat(${columns}, 1fr)`,
-            }}
-          >
-            {images.map((image) => (
-              <div
-                key={image.id}
-                className={`image-card ${isLandscape(image) ? 'landscape' : ''}`}
-                onClick={() => setSelectedImage(image)}
-              >
-                <div className="image-placeholder">
-                  <div className="image-text">
-                    {image.filename}<br />
-                    {image.width} × {image.height}
+          {/* 作品グリッド */}
+          {!loading && !error && artworks.length === 0 ? (
+            <div className="empty-state">
+              <p>まだ作品がアップロードされていません</p>
+            </div>
+          ) : (
+            <div 
+              className="image-grid"
+              style={{
+                gridTemplateColumns: `repeat(${columns}, 1fr)`,
+              }}
+            >
+              {artworks.map((artwork) => (
+                <div
+                  key={artwork.id}
+                  className={`image-card ${isLandscape(artwork) ? 'landscape' : ''}`}
+                  onClick={() => setSelectedImage(artwork)}
+                  data-month={artwork.yearMonth}
+                >
+                  {artwork.type === 'image' ? (
+                    <img 
+                      src={artwork.url}
+                      alt={artwork.originalName}
+                      className="artwork-image"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        target.nextElementSibling?.classList.remove('hidden')
+                      }}
+                    />
+                  ) : (
+                    <video 
+                      src={artwork.url}
+                      className="artwork-video"
+                      preload="metadata"
+                      muted
+                    />
+                  )}
+                  
+                  {/* フォールバック表示 */}
+                  <div className="image-placeholder hidden">
+                    <div className="image-text">
+                      {artwork.originalName}<br />
+                      {artwork.dimensions ? 
+                        `${artwork.dimensions.width} × ${artwork.dimensions.height}` : 
+                        artwork.type
+                      }
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </main>
 
         {/* 月ジャンプモーダル */}
@@ -179,10 +300,15 @@ export default function Gallery() {
               </button>
               <div className="calendar-header">
                 <h3>年月を選択</h3>
+                {months.length > 0 && (
+                  <p className="calendar-subtitle">
+                    {months.length}ヶ月分のデータがあります
+                  </p>
+                )}
               </div>
               
               <div className="year-selector">
-                {[2024, 2025].map(year => (
+                {years.map(year => (
                   <button
                     key={year}
                     className={`year-btn ${selectedYear === year ? 'active' : ''}`}
@@ -194,19 +320,24 @@ export default function Gallery() {
               </div>
               
               <div className="month-grid">
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => (
-                  <button
-                    key={month}
-                    className={`month-btn ${selectedMonth === month && selectedYear === 2024 ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedMonth(month)
-                      console.log(`${selectedYear}年${month}月にジャンプ`)
-                      setTimeout(() => setShowCalendar(false), 300)
-                    }}
-                  >
-                    {month}月
-                  </button>
-                ))}
+                {Array.from({length: 12}, (_, i) => i + 1).map(month => {
+                  const yearMonth = `${selectedYear}-${month.toString().padStart(2, '0')}`
+                  const monthData = months.find(m => m.yearMonth === yearMonth)
+                  const hasData = !!monthData
+                  const count = monthData?.count || 0
+                  
+                  return (
+                    <button
+                      key={month}
+                      className={`month-btn ${!hasData ? 'disabled' : ''} ${targetMonth === yearMonth ? 'active' : ''}`}
+                      disabled={!hasData}
+                      onClick={() => hasData && jumpToMonth(selectedYear, month)}
+                    >
+                      {month}月
+                      {hasData && <span className="month-count">({count})</span>}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -224,29 +355,39 @@ export default function Gallery() {
                 className="expanded-image"
                 onClick={() => setShowModalControls(!showModalControls)}
                 style={{
-                  width: selectedImage.width > selectedImage.height 
+                  width: selectedImage.dimensions && selectedImage.dimensions.width > selectedImage.dimensions.height 
                     ? '90vw' 
-                    : `${(selectedImage.width / selectedImage.height) * 90}vh`,
-                  height: selectedImage.height > selectedImage.width 
+                    : selectedImage.dimensions ? `${(selectedImage.dimensions.width / selectedImage.dimensions.height) * 90}vh` : '90vw',
+                  height: selectedImage.dimensions && selectedImage.dimensions.height > selectedImage.dimensions.width 
                     ? '90vh' 
-                    : `${(selectedImage.height / selectedImage.width) * 90}vw`,
+                    : selectedImage.dimensions ? `${(selectedImage.dimensions.height / selectedImage.dimensions.width) * 90}vw` : '90vh',
                   maxWidth: '90vw',
                   maxHeight: '90vh'
                 }}
               >
-                <div 
-                  className="image-placeholder-large"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    aspectRatio: `${selectedImage.width} / ${selectedImage.height}`
-                  }}
-                >
-                  <div className="image-text-large">
-                    {selectedImage.filename}<br />
-                    {selectedImage.width} × {selectedImage.height}
-                  </div>
-                </div>
+                {selectedImage.type === 'image' ? (
+                  <img 
+                    src={selectedImage.url}
+                    alt={selectedImage.originalName}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      borderRadius: '12px'
+                    }}
+                  />
+                ) : (
+                  <video 
+                    src={selectedImage.url}
+                    controls
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      borderRadius: '12px'
+                    }}
+                  />
+                )}
               </div>
               
               {/* コントロール（条件表示） */}

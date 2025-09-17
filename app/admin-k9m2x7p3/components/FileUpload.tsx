@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { Upload, FileImage, X, Check, MessageSquare } from 'lucide-react'
+import { Upload, FileImage, X, Check, MessageSquare, Loader2 } from 'lucide-react'
+import { FileData, UploadRequest } from '../../lib/types'
 
 interface Artwork {
   id: string
@@ -25,7 +26,29 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   const [pendingUploads, setPendingUploads] = useState<PendingArtwork[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 現在の年月を取得
+  const getCurrentYearMonth = () => {
+    const now = new Date()
+    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
+  }
+
+  // ファイルをBase64に変換
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        // data:image/jpeg;base64, の部分を除去
+        const base64 = result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
 
   // ファイル選択処理（順番保持が重要）
   const handleFileSelect = useCallback((files: FileList) => {
@@ -102,180 +125,264 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   // コメント更新
   const updateComment = (id: string, comment: string) => {
     setPendingUploads(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, comment } : item
-      )
+      prev.map(item => item.id === id ? { ...item, comment } : item)
     )
   }
 
   // 月境目フラグ更新
   const toggleMonthBorder = (id: string) => {
     setPendingUploads(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, isMonthBorder: !item.isMonthBorder } : item
-      )
+      prev.map(item => item.id === id ? { ...item, isMonthBorder: !item.isMonthBorder } : item)
     )
   }
 
-  // アップロード実行（仮実装）
+  // アップロード実行（API連携）
   const handleUpload = async () => {
+    if (pendingUploads.length === 0) return
+
     setIsUploading(true)
-    
+    setUploadStatus('ファイルを準備中...')
+
     try {
-      // TODO: 実際のアップロード処理を実装
-      // 現在は仮でローカル状態に追加
-      const newArtworks: Artwork[] = pendingUploads.map(pending => ({
-        id: `artwork_${Date.now()}_${pending.order}`,
-        filename: pending.filename,
-        comment: pending.comment,
-        isMonthBorder: pending.isMonthBorder,
-        order: pending.order
+      // ファイルデータを準備
+      const fileDataArray: FileData[] = []
+      
+      for (const upload of pendingUploads) {
+        setUploadStatus(`${upload.filename} を変換中...`)
+        
+        const base64Content = await fileToBase64(upload.file)
+        
+        fileDataArray.push({
+          name: upload.filename,
+          content: base64Content,
+          type: upload.file.type,
+          comment: upload.comment || undefined,
+        })
+      }
+
+      // アップロードリクエストを準備
+      const uploadRequest: UploadRequest = {
+        files: fileDataArray,
+        yearMonth: getCurrentYearMonth(),
+        monthBoundary: pendingUploads.some(upload => upload.isMonthBorder),
+      }
+
+      setUploadStatus('サーバーにアップロード中...')
+
+      // API呼び出し
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(uploadRequest),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'アップロードに失敗しました')
+      }
+
+      const result = await response.json()
+      setUploadStatus(`${result.artworks.length}件のファイルをアップロードしました！`)
+
+      // 成功時の処理
+      // プレビューURLをクリーンアップ
+      pendingUploads.forEach(upload => {
+        URL.revokeObjectURL(upload.preview)
+      })
+
+      // 追加されたアートワークを既存リストに反映
+      const newArtworks = result.artworks.map((artwork: any, index: number) => ({
+        id: artwork.id,
+        filename: artwork.filename,
+        comment: artwork.comment,
+        order: artworks.length + index,
+        isMonthBorder: artwork.isMonthBoundary || false,
       }))
-      
+
       setArtworks([...artworks, ...newArtworks])
-      
-      // クリーンアップ
-      pendingUploads.forEach(item => URL.revokeObjectURL(item.preview))
       setPendingUploads([])
-      
+
+      // 2秒後にステータスをクリア
+      setTimeout(() => {
+        setUploadStatus('')
+      }, 2000)
+
     } catch (error) {
-      console.error('アップロードエラー:', error)
+      console.error('Upload failed:', error)
+      setUploadStatus(`エラー: ${error instanceof Error ? error.message : '不明なエラー'}`)
+      
+      // 5秒後にエラーメッセージをクリア
+      setTimeout(() => {
+        setUploadStatus('')
+      }, 5000)
     } finally {
       setIsUploading(false)
     }
   }
 
+  // 全削除
+  const clearAllPending = () => {
+    pendingUploads.forEach(upload => {
+      URL.revokeObjectURL(upload.preview)
+    })
+    setPendingUploads([])
+  }
+
   return (
-    <div>
-      {/* ファイル選択エリア - 超シンプル版 */}
+    <div className="bg-white/40 backdrop-blur-sm rounded-3xl p-6 border border-amber-100/30">
+      {/* ドロップゾーン */}
       <div
         onClick={handleClick}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={`
-          cursor-pointer transition-all rounded-2xl border-2 border-dashed p-12
+          relative border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition-all duration-200
           ${isDragging 
-            ? 'border-[#6b5b4d] bg-[#f5f2eb]' 
-            : 'border-[#d4c4b0] hover:border-[#6b5b4d] hover:bg-[#f9f7f2]'
+            ? 'border-amber-400 bg-amber-50/50 scale-102' 
+            : 'border-amber-200 hover:border-amber-300 hover:bg-amber-50/30'
           }
         `}
       >
-        <div className="text-center">
-          <Upload size={64} className="mx-auto mb-6 text-[#8b7355]" />
-          <p className="text-xl text-[#6b5b4d] font-medium">
-            ファイルをドロップ
-          </p>
-        </div>
-        
         <input
           ref={fileInputRef}
           type="file"
           multiple
           accept="image/*,video/*"
-          className="hidden"
           onChange={handleInputChange}
+          className="hidden"
         />
+        
+        <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-amber-500' : 'text-amber-400'}`} />
+        <p className="text-lg font-medium text-amber-700 mb-2">
+          ファイルをドラッグ&ドロップ
+        </p>
+        <p className="text-sm text-amber-600">
+          または、クリックして選択
+        </p>
       </div>
 
-      {/* アップロード待ちリスト - 最小限UI */}
+      {/* アップロード状況表示 */}
+      {(isUploading || uploadStatus) && (
+        <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-200/50">
+          <div className="flex items-center gap-3">
+            {isUploading && <Loader2 className="w-5 h-5 animate-spin text-blue-600" />}
+            <span className={`text-sm ${isUploading ? 'text-blue-700' : 'text-green-700'}`}>
+              {uploadStatus}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ペンディングアップロード一覧 */}
       {pendingUploads.length > 0 && (
         <div className="mt-6">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[#8b7355] text-sm">{pendingUploads.length}件</span>
-            <div className="flex space-x-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-amber-800">
+              アップロード予定: {pendingUploads.length}件
+            </h3>
+            <div className="flex gap-2">
               <button
-                onClick={() => {
-                  pendingUploads.forEach(item => URL.revokeObjectURL(item.preview))
-                  setPendingUploads([])
-                }}
-                className="text-[#8b7355] hover:text-red-500 text-sm transition-colors"
+                onClick={clearAllPending}
+                disabled={isUploading}
+                className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-2xl border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                クリア
+                全削除
               </button>
               <button
                 onClick={handleUpload}
                 disabled={isUploading}
-                className="
-                  px-4 py-2 bg-[#6b5b4d] text-white rounded-full text-sm font-medium
-                  hover:bg-[#5a4a3d] transition-colors disabled:opacity-50
-                "
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {isUploading ? "..." : "アップロード"}
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    アップロード中...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    アップロード開始
+                  </>
+                )}
               </button>
             </div>
           </div>
 
-          {/* プレビューグリッド - サイズ最適化版 */}
-          <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {pendingUploads.map((item, index) => (
-              <div 
-                key={item.id}
-                className="bg-white rounded-xl overflow-hidden border border-[#e6ddd1] relative group"
-              >
-                {/* プレビュー画像 - アスペクト比最適化 */}
-                <div className="aspect-[4/3] bg-[#f5f2eb] relative">
-                  {item.file.type.startsWith('image/') ? (
-                    <img
-                      src={item.preview}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <FileImage size={20} className="text-[#8b7355]" />
+          {/* アップロード予定ファイルのグリッド */}
+          <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-4">
+            {pendingUploads
+              .sort((a, b) => a.order - b.order) // 順番保持
+              .map((upload) => (
+                <div key={upload.id} className="group">
+                  <div className="relative bg-white/60 rounded-2xl border border-amber-100/50 overflow-hidden">
+                    {/* プレビュー画像 */}
+                    <div className="aspect-square relative">
+                      {upload.file.type.startsWith('image/') ? (
+                        <img
+                          src={upload.preview}
+                          alt={upload.filename}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <FileImage className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      
+                      {/* 削除ボタン */}
+                      <button
+                        onClick={() => removePendingUpload(upload.id)}
+                        disabled={isUploading}
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-500/80 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+
+                      {/* 月境目フラグ */}
+                      {upload.isMonthBorder && (
+                        <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                          境目
+                        </div>
+                      )}
                     </div>
-                  )}
-                  
-                  {/* 順番番号 */}
-                  <div className="absolute top-1 left-1 bg-[#6b5b4d] text-white text-xs px-1.5 py-0.5 rounded-full">
-                    {index + 1}
+
+                    {/* ファイル情報 */}
+                    <div className="p-2">
+                      <p className="text-xs text-gray-600 truncate mb-1" title={upload.filename}>
+                        {upload.filename}
+                      </p>
+                      
+                      {/* コメント入力 */}
+                      <input
+                        type="text"
+                        placeholder="コメント"
+                        value={upload.comment}
+                        onChange={(e) => updateComment(upload.id, e.target.value)}
+                        disabled={isUploading}
+                        className="w-full text-xs p-1 border border-gray-200 rounded bg-white/50 focus:outline-none focus:border-amber-300 disabled:opacity-50"
+                      />
+                      
+                      {/* 月境目フラグボタン */}
+                      <button
+                        onClick={() => toggleMonthBorder(upload.id)}
+                        disabled={isUploading}
+                        className={`
+                          mt-1 w-full text-xs py-1 px-2 rounded transition-colors disabled:opacity-50
+                          ${upload.isMonthBorder 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }
+                        `}
+                      >
+                        {upload.isMonthBorder ? '境目解除' : '月境目'}
+                      </button>
+                    </div>
                   </div>
-                  
-                  {/* 削除ボタン */}
-                  <button
-                    onClick={() => removePendingUpload(item.id)}
-                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <X size={10} />
-                  </button>
-                  
-                  {/* 月境目フラグ */}
-                  {item.isMonthBorder && (
-                    <div className="absolute bottom-1 left-1 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                      月
-                    </div>
-                  )}
                 </div>
-                
-                {/* コンパクト情報エリア */}
-                <div className="p-2">
-                  {/* コメント入力 - サイズ拡大 */}
-                  <input
-                    type="text"
-                    value={item.comment || ''}
-                    onChange={(e) => updateComment(item.id, e.target.value)}
-                    placeholder="コメント"
-                    className="
-                      w-full text-xs p-2 border border-[#e6ddd1] rounded-lg 
-                      focus:outline-none focus:ring-1 focus:ring-[#6b5b4d] focus:ring-opacity-20
-                      bg-white mb-2 h-8
-                    "
-                  />
-                  
-                  {/* 月境目チェックボックス - 超コンパクト */}
-                  <label className="flex items-center space-x-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={item.isMonthBorder || false}
-                      onChange={() => toggleMonthBorder(item.id)}
-                      className="w-3 h-3 text-[#6b5b4d] border border-[#d4c4b0] rounded"
-                    />
-                    <span className="text-xs text-[#8b7355]">月境目</span>
-                  </label>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}

@@ -445,6 +445,97 @@ body {
   line-height: 1.4;
 }
 
+/* リアル画像・動画用スタイル */
+.artwork-image,
+.artwork-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  transition: opacity 0.3s ease;
+}
+
+.artwork-image:hover,
+.artwork-video:hover {
+  opacity: 0.95;
+}
+
+.artwork-video {
+  cursor: pointer;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* エラー状態・空の状態 */
+.error {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--warm-beige);
+}
+
+.dark .empty-state {
+  color: var(--dark-warm-beige);
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* フィルター表示状態 */
+.filtered-info {
+  color: var(--warm-brown);
+  font-weight: 500;
+}
+
+.dark .filtered-info {
+  color: var(--dark-warm-brown);
+}
+
+/* カレンダーの拡張 */
+.calendar-subtitle {
+  font-size: 0.9rem;
+  color: var(--warm-beige);
+  margin: 0.5rem 0 0 0;
+}
+
+.dark .calendar-subtitle {
+  color: var(--dark-warm-beige);
+}
+
+.month-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.month-btn:disabled:hover {
+  background: var(--warm-light);
+  transform: none;
+}
+
+.dark .month-btn:disabled:hover {
+  background: var(--dark-warm-light);
+}
+
+.month-count {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--warm-beige);
+  margin-top: 0.25rem;
+}
+
+.dark .month-count {
+  color: var(--dark-warm-beige);
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 1200px) {
   .image-grid { grid-template-columns: repeat(4, 1fr) !important; }

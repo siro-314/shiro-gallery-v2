@@ -1,0 +1,36 @@
+# Netlify デプロイメント設定ファイル
+
+[build]
+  # ビルドコマンド
+  command = "npm run build"
+  
+  # 公開ディレクトリ（Next.jsの静的エクスポート）
+  publish = "out"
+
+[build.environment]
+  # Node.jsバージョン指定
+  NODE_VERSION = "18"
+
+# リダイレクト設定（SPA用）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ヘッダー設定（セキュリティとキャッシュ最適化）
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
