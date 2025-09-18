@@ -15,6 +15,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 環境変数からGitHub設定を取得
 function getGitHubConfig() {
+  console.log('🔧 Loading GitHub configuration...');
+  console.log('   NODE_ENV:', process.env.NODE_ENV || 'undefined');
+  console.log('   Available env vars:', Object.keys(process.env).filter(key => key.startsWith('GITHUB_')).join(', ') || 'none');
+  
   const config = {
     token: process.env.GITHUB_TOKEN,
     owner: process.env.GITHUB_OWNER || 'siro-314',
@@ -22,8 +26,15 @@ function getGitHubConfig() {
     branch: process.env.GITHUB_BRANCH || 'main'
   };
 
+  console.log('   GITHUB_TOKEN:', config.token ? 'SET (' + config.token.substring(0, 10) + '...)' : 'NOT SET');
+  console.log('   GITHUB_OWNER:', config.owner);
+  console.log('   GITHUB_REPO:', config.repo);
+  console.log('   GITHUB_BRANCH:', config.branch);
+
   if (!config.token) {
     console.error('❌ GITHUB_TOKEN environment variable is required');
+    console.error('   Available environment variables:');
+    console.error('   ', Object.keys(process.env).filter(key => key.includes('GIT')).join(', ') || 'No GIT-related variables found');
     process.exit(1);
   }
 
@@ -37,6 +48,9 @@ async function fetchArtworkData(config) {
   console.log('📁 Fetching artwork data from GitHub...');
   console.log('   Repository:', `${config.owner}/${config.repo}`);
   console.log('   File path:', 'public/data/artworks.json');
+  console.log('   Token (first 10 chars):', config.token ? config.token.substring(0, 10) + '...' : 'NOT_SET');
+  console.log('   Environment:', process.env.NODE_ENV || 'undefined');
+  console.log('   Request URL:', url);
   
   try {
     const response = await fetch(url, {
@@ -47,12 +61,31 @@ async function fetchArtworkData(config) {
       }
     });
     
+    console.log('   Response Status:', response.status, response.statusText);
+    
+    // レート制限情報をログ出力
+    const rateLimit = response.headers.get('x-ratelimit-remaining');
+    if (rateLimit) {
+      console.log('   Rate Limit Remaining:', rateLimit);
+    }
+    
     if (!response.ok) {
+      // エラーレスポンスの詳細を取得
+      let errorDetails = 'No details available';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.message || JSON.stringify(errorData);
+      } catch (e) {
+        errorDetails = await response.text();
+      }
+      
+      console.error('   Error Details:', errorDetails);
+      
       if (response.status === 404) {
         console.log('📝 No artwork data found (empty repository)');
         return [];
       }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorDetails}`);
     }
     
     const data = await response.json();
