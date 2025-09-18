@@ -8,8 +8,10 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-// 環境変数を読み込み
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+// 環境変数を読み込み（本番環境では.env.localが存在しないため条件分岐）
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+}
 
 // 環境変数からGitHub設定を取得
 function getGitHubConfig() {
