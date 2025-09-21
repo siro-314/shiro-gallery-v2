@@ -4,8 +4,8 @@
   # ビルドコマンド
   command = "npm run build"
   
-  # 公開ディレクトリ（Next.jsの静的エクスポート）
-  publish = "out"
+  # Next.js Runtime使用時は publish ディレクトリを指定しない
+  # publish = "out"
 
 [build.environment]
   # Node.jsバージョン指定
