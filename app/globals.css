@@ -38,6 +38,16 @@ body {
   color: var(--dark-warm-brown);
 }
 
+/* より強いダークモード設定 */
+.dark {
+  background: linear-gradient(135deg, #2d2a26 0%, #3a352f 100%);
+  color: #d4c4b0;
+}
+
+.dark .min-h-screen {
+  background: linear-gradient(135deg, #2d2a26 0%, #3a352f 100%);
+}
+
 /* ヘッダー */
 .header {
   text-align: center;

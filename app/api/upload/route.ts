@@ -50,13 +50,9 @@ export async function POST(request: NextRequest) {
     // ファイルをアップロード・保存
     const savedArtworks = await dataManager.saveArtworks(
       uploadRequest.files,
-      uploadRequest.yearMonth
+      uploadRequest.yearMonth,
+      uploadRequest.monthBoundary
     );
-
-    // 月境目フラグの設定
-    if (uploadRequest.monthBoundary && savedArtworks.length > 0) {
-      await dataManager.updateMonthBoundary(savedArtworks[0].id, true);
-    }
 
     return NextResponse.json({
       success: true,

@@ -49,10 +49,8 @@ export default function Gallery() {
   
   const { months, years } = isProduction ? staticData : dynamicMonths
   
-  // 月フィルタリング（本番環境用）
-  const artworks = isProduction 
-    ? staticData.getArtworksByMonth(targetMonth)
-    : allArtworks
+  // 常に全データを表示
+  const artworks = isProduction ? staticData.artworks : allArtworks
 
   // レスポンシブ対応
   useEffect(() => {
@@ -111,26 +109,20 @@ export default function Gallery() {
     return artwork.dimensions.width > artwork.dimensions.height
   }
 
-  // 月ジャンプ処理
+  // 月ジャンプ処理（スクロール移動）
   const jumpToMonth = (year: number, month: number) => {
     const yearMonth = `${year}-${month.toString().padStart(2, '0')}`
-    setTargetMonth(yearMonth)
     setSelectedYear(year)
     setSelectedMonth(month)
     setShowCalendar(false)
     
-    // 該当する月にスクロール
+    // 該当する月にスクロール（フィルタリングはしない）
     setTimeout(() => {
       const element = document.querySelector(`[data-month="${yearMonth}"]`)
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     }, 100)
-  }
-
-  // 全表示に戻る
-  const showAllArtworks = () => {
-    setTargetMonth(undefined)
   }
 
   return (
@@ -179,26 +171,7 @@ export default function Gallery() {
               月
             </button>
             
-            {/* 全表示ボタン */}
-            {targetMonth && (
-              <button 
-                className="btn"
-                onClick={showAllArtworks}
-                title="全ての作品を表示"
-              >
-                全表示
-              </button>
-            )}
-            
-            {/* リフレッシュボタン */}
-            <button 
-              className="btn"
-              onClick={refresh}
-              disabled={loading}
-              title="データを更新"
-            >
-              {loading ? '🔄' : '↻'}
-            </button>
+
             
             {/* テーマ切替 */}
             <button 
@@ -223,11 +196,6 @@ export default function Gallery() {
             {!loading && !error && (
               <>
                 総画像数: {artworks.length}
-                {targetMonth && (
-                  <span className="filtered-info">
-                    {' '}({targetMonth} のみ表示中)
-                  </span>
-                )}
               </>
             )}
           </div>
@@ -244,13 +212,38 @@ export default function Gallery() {
                 gridTemplateColumns: `repeat(${columns}, 1fr)`,
               }}
             >
-              {artworks.map((artwork) => (
-                <div
-                  key={artwork.id}
-                  className={`image-card ${isLandscape(artwork) ? 'landscape' : ''}`}
-                  onClick={() => setSelectedImage(artwork)}
-                  data-month={artwork.yearMonth}
-                >
+              {artworks.map((artwork, index) => {
+                // 月境目表示の判定（最初の画像でも表示する）
+                const showMonthBoundary = artwork.isMonthBoundary;
+                const monthDisplay = showMonthBoundary ? artwork.yearMonth.split('-')[1] + '月' : null;
+                
+                return (
+                  <React.Fragment key={artwork.id}>
+                    {/* 月境目表示 */}
+                    {showMonthBoundary && (
+                      <div 
+                        className="month-boundary"
+                        style={{
+                          gridColumn: `1 / -1`,
+                          textAlign: 'center',
+                          padding: '1rem 0',
+                          fontSize: '1.2rem',
+                          fontWeight: '600',
+                          color: 'var(--warm-brown)',
+                          borderBottom: '2px solid var(--cream-bg)',
+                          marginBottom: '1rem',
+                        }}
+                      >
+                        {monthDisplay}
+                      </div>
+                    )}
+                    
+                    {/* 画像カード */}
+                    <div
+                      className={`image-card ${isLandscape(artwork) ? 'landscape' : ''}`}
+                      onClick={() => setSelectedImage(artwork)}
+                      data-month={artwork.yearMonth}
+                    >
                   {artwork.type === 'image' ? (
                     <img 
                       src={artwork.url}
@@ -283,7 +276,9 @@ export default function Gallery() {
                     </div>
                   </div>
                 </div>
-              ))}
+              </React.Fragment>
+                )
+              })}
             </div>
           )}
         </main>
@@ -329,7 +324,7 @@ export default function Gallery() {
                   return (
                     <button
                       key={month}
-                      className={`month-btn ${!hasData ? 'disabled' : ''} ${targetMonth === yearMonth ? 'active' : ''}`}
+                      className={`month-btn ${!hasData ? 'disabled' : ''}`}
                       disabled={!hasData}
                       onClick={() => hasData && jumpToMonth(selectedYear, month)}
                     >

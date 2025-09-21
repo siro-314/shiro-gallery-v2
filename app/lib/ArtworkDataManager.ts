@@ -53,7 +53,7 @@ export class ArtworkDataManager {
   /**
    * アートワークを追加保存
    */
-  async saveArtworks(newFiles: FileData[], yearMonth: string): Promise<Artwork[]> {
+  async saveArtworks(newFiles: FileData[], yearMonth: string, monthBoundary?: boolean): Promise<Artwork[]> {
     const config = this.storageManager.getConfig();
     const savedArtworks: Artwork[] = [];
 
@@ -86,7 +86,7 @@ export class ArtworkDataManager {
           comment: fileData.comment,
           uploadedAt: new Date().toISOString(),
           yearMonth,
-          isMonthBoundary: false, // 後で設定
+          isMonthBoundary: monthBoundary && savedArtworks.length === 0, // 最初の画像だけに境目フラグ
         };
 
         savedArtworks.push(artwork);

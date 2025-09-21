@@ -5,10 +5,17 @@
       "count": 1,
       "year": 2025,
       "month": 9
+    },
+    {
+      "yearMonth": "2023-07",
+      "count": 1,
+      "year": 2023,
+      "month": 7
     }
   ],
-  "totalMonths": 1,
+  "totalMonths": 2,
   "years": [
-    2025
+    2025,
+    2023
   ]
 }
