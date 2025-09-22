@@ -4,18 +4,13 @@
   # ビルドコマンド
   command = "npm run build"
   
-  # Next.js Runtime使用時は publish ディレクトリを指定しない
-  # publish = "out"
+  # Next.js Runtime使用時は publish ディレクトリを指定しない（自動検出）
 
-[build.environment]
-  # Node.jsバージョン指定
-  NODE_VERSION = "18"
-
-# リダイレクト設定（SPA用）
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# リダイレクト設定（SPA用）は不要（Next.js Runtimeが自動処理）
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html" 
+#   status = 200
 
 # ヘッダー設定（セキュリティとキャッシュ最適化）
 [[headers]]
