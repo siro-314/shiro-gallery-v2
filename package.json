@@ -5,7 +5,7 @@
         "private": true,
         "scripts": {
                 "dev": "bash scripts/setup-env.sh && next dev",
-                "build": "bash scripts/setup-env.sh && node scripts/build-data.js && next build",
+                "build": "bash scripts/setup-env.sh && next build",
                 "build:dev": "bash scripts/setup-env.sh && next build",
                 "start": "next start",
                 "lint": "next lint",

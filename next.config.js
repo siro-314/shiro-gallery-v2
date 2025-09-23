@@ -5,6 +5,14 @@ const nextConfig = {
   trailingSlash: true,
   images: {
     unoptimized: true
+  },
+  // Netlify Next.js Runtime用のAPIルート最適化
+  experimental: {
+    serverComponentsExternalPackages: []
+  },
+  // APIルートが確実に動的に処理されるように設定
+  async rewrites() {
+    return []
   }
 }
 
