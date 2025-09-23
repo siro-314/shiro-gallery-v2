@@ -3,21 +3,14 @@ import { ArtworkDataManager } from '../../lib/ArtworkDataManager';
 import { GitHubStorageManager } from '../../lib/GitHubStorageManager';
 import { ConfigManager } from '../../lib/ConfigManager';
 
-// 本番環境では静的エクスポートのためAPIルートを無効化
-export const dynamic = 'force-static';
+// Next.js Runtime環境ではAPI機能を有効化
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/artworks - アートワークデータを取得
  * 開発環境でのみ動作し、本番環境では静的ファイルを使用
  */
 export async function GET(request: NextRequest) {
-  // 本番環境では404を返す
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { success: false, error: 'API not available in production' },
-      { status: 404 }
-    );
-  }
   try {
     // ストレージマネージャーを初期化（ConfigManagerから自動設定取得）
     const storageManager = new GitHubStorageManager();

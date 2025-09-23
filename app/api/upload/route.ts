@@ -4,22 +4,14 @@ import { ArtworkDataManager } from '../../lib/ArtworkDataManager';
 import { ConfigManager } from '../../lib/ConfigManager';
 import { UploadRequest } from '../../lib/types';
 
-// 本番環境では静的エクスポートのためAPIルートを無効化
-export const dynamic = 'force-static';
+// Next.js Runtime環境ではAPI機能を有効化
+export const dynamic = 'force-dynamic';
 
 /**
  * ファイルアップロードAPI（POST /api/upload）
  * 疎結合設計により、将来的な拡張に対応
  */
 export async function POST(request: NextRequest) {
-  // 本番環境では無効化
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { success: false, error: 'Upload API not available in production' },
-      { status: 403 }
-    );
-  }
-  
   try {
     // リクエストの解析
     const uploadRequest: UploadRequest = await request.json();
