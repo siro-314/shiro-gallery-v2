@@ -27,6 +27,7 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<string>('')
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 現在の年月を取得
@@ -139,7 +140,7 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
     )
   }
 
-  // アップロード実行（API連携）
+  // バッチアップロード実行（大量ファイル対応）
   const handleUpload = async () => {
     if (pendingUploads.length === 0) return
 
@@ -170,10 +171,12 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         monthBoundary: pendingUploads.some(upload => upload.isMonthBorder),
       }
 
-      setUploadStatus('サーバーにアップロード中...')
+      // ファイル数に応じてAPIを選択
+      const apiEndpoint = fileDataArray.length > 6 ? '/api/upload-batch' : '/api/upload'
+      setUploadStatus(`${fileDataArray.length}ファイルを${fileDataArray.length > 6 ? 'バッチ' : '一括'}アップロード中...`)
 
       // API呼び出し
-      const response = await fetch('/api/upload', {
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +190,22 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       }
 
       const result = await response.json()
-      setUploadStatus(`${result.artworks.length}件のファイルをアップロードしました！`)
+      
+      // バッチ処理の結果に応じてメッセージを変更
+      if (result.success) {
+        // 全て成功
+        setUploadStatus(`✅ ${result.artworks.length}件のファイルをアップロードしました！`)
+      } else if (result.artworks && result.artworks.length > 0) {
+        // 部分的成功（207 Multi-Status）
+        setUploadStatus(`⚠️ ${result.artworks.length}件成功、${result.summary?.failed || 0}件失敗`)
+        
+        // エラー詳細をコンソールに出力
+        if (result.errors) {
+          console.warn('Batch upload errors:', result.errors)
+        }
+      } else {
+        throw new Error('すべてのファイルのアップロードに失敗しました')
+      }
 
       // 成功時の処理
       // プレビューURLをクリーンアップ
@@ -198,22 +216,26 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       // 手動年月入力をリセット
       setManualYearMonth('')
 
-      // 追加されたアートワークを既存リストに反映
-      const newArtworks = result.artworks.map((artwork: any, index: number) => ({
-        id: artwork.id,
-        filename: artwork.filename,
-        comment: artwork.comment,
-        order: artworks.length + index,
-        isMonthBorder: artwork.isMonthBoundary || false,
-      }))
+      // 追加されたアートワーク（成功分のみ）を既存リストに反映
+      if (result.artworks && result.artworks.length > 0) {
+        const newArtworks = result.artworks.map((artwork: any, index: number) => ({
+          id: artwork.id,
+          filename: artwork.filename,
+          comment: artwork.comment,
+          order: artworks.length + index,
+          isMonthBorder: artwork.isMonthBoundary || false,
+        }))
 
-      setArtworks([...artworks, ...newArtworks])
+        setArtworks([...artworks, ...newArtworks])
+      }
+      
       setPendingUploads([])
 
-      // 2秒後にステータスをクリア
+      // 3秒後にステータスをクリア
       setTimeout(() => {
         setUploadStatus('')
-      }, 2000)
+        setUploadProgress(null)
+      }, 3000)
 
     } catch (error) {
       console.error('Upload failed:', error)
@@ -222,9 +244,11 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       // 5秒後にエラーメッセージをクリア
       setTimeout(() => {
         setUploadStatus('')
+        setUploadProgress(null)
       }, 5000)
     } finally {
       setIsUploading(false)
+      setUploadProgress(null)
     }
   }
 
@@ -273,12 +297,28 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       {/* アップロード状況表示 */}
       {(isUploading || uploadStatus) && (
         <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-200/50">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-2">
             {isUploading && <Loader2 className="w-5 h-5 animate-spin text-blue-600" />}
             <span className={`text-sm ${isUploading ? 'text-blue-700' : 'text-green-700'}`}>
               {uploadStatus}
             </span>
           </div>
+          
+          {/* プログレスバー（バッチ処理時） */}
+          {uploadProgress && (
+            <div className="mt-2">
+              <div className="flex justify-between text-xs text-blue-600 mb-1">
+                <span>進捗</span>
+                <span>{uploadProgress.current} / {uploadProgress.total}</span>
+              </div>
+              <div className="w-full bg-blue-100 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
