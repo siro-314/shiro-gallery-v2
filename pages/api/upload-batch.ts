@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { GitHubStorageManager } from '../../app/lib/GitHubStorageManager';
 import { ArtworkDataManager } from '../../app/lib/ArtworkDataManager';
 import { ConfigManager } from '../../app/lib/ConfigManager';
-import { UploadRequest } from '../../app/lib/types';
+import { UploadRequest, Artwork } from '../../app/lib/types';
 
 /**
  * バッチアップロード処理API（POST /api/upload-batch）
@@ -55,8 +55,12 @@ export default async function handler(
     
     console.log(`📊 Batch API: Processing ${totalFiles} files in ${totalBatches} batches (${BATCH_SIZE} files per batch)`);
 
-    const results = [];
-    const errors = [];
+    const results: Artwork[] = [];
+    const errors: Array<{
+      batch: number;
+      files: string[];
+      error: string;
+    }> = [];
 
     // バッチごとに処理
     for (let i = 0; i < totalBatches; i++) {
