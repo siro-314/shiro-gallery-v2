@@ -1,14 +1,21 @@
 {
   "availableMonths": [
     {
+      "yearMonth": "2025-12",
+      "count": 9,
+      "year": 2025,
+      "month": 12
+    },
+    {
       "yearMonth": "2023-07",
       "count": 1,
       "year": 2023,
       "month": 7
     }
   ],
-  "totalMonths": 1,
+  "totalMonths": 2,
   "years": [
+    2025,
     2023
   ]
 }
