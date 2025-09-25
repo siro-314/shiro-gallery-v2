@@ -171,9 +171,18 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         monthBoundary: pendingUploads.some(upload => upload.isMonthBorder),
       }
 
-      // ファイル数に応じてAPIを選択
-      const apiEndpoint = fileDataArray.length > 6 ? '/api/upload-batch' : '/api/upload'
-      setUploadStatus(`${fileDataArray.length}ファイルを${fileDataArray.length > 6 ? 'バッチ' : '一括'}アップロード中...`)
+      // ファイル数とサイズに応じてAPIを選択
+      // 3ファイル以上、または総サイズが3MB以上の場合はバッチAPI使用
+      const totalSize = fileDataArray.reduce((sum, file) => sum + file.content.length, 0)
+      const totalSizeMB = totalSize / (1024 * 1024) // MB変換
+      
+      const shouldUseBatchAPI = fileDataArray.length >= 3 || totalSizeMB > 3
+      const apiEndpoint = shouldUseBatchAPI ? '/api/upload-batch' : '/api/upload'
+      
+      console.log(`📊 Upload decision: ${fileDataArray.length} files, ${totalSizeMB.toFixed(2)}MB total`)
+      console.log(`🔀 Using API: ${apiEndpoint}`)
+      
+      setUploadStatus(`${fileDataArray.length}ファイルを${shouldUseBatchAPI ? 'バッチ' : '一括'}アップロード中...`)
 
       // API呼び出し
       const response = await fetch(apiEndpoint, {
@@ -185,8 +194,20 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'アップロードに失敗しました')
+        if (response.status === 413) {
+          // Content Too Large エラーの特別処理
+          throw new Error('ファイルサイズが大きすぎます。ファイル数を減らすか、小さなファイルに分割してください。')
+        }
+        
+        let errorMessage = 'アップロードに失敗しました'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          // JSON解析失敗時はレスポンステキストを使用
+          errorMessage = await response.text() || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()
