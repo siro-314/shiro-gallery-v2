@@ -140,7 +140,7 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
     )
   }
 
-  // バッチアップロード実行（大量ファイル対応）
+  // フロントエンドバッチアップロード実行（大量ファイル対応）
   const handleUpload = async () => {
     if (pendingUploads.length === 0) return
 
@@ -164,68 +164,136 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         })
       }
 
-      // アップロードリクエストを準備
-      const uploadRequest: UploadRequest = {
-        files: fileDataArray,
-        yearMonth: manualYearMonth || getCurrentYearMonth(),
-        monthBoundary: pendingUploads.some(upload => upload.isMonthBorder),
-      }
+      const yearMonth = manualYearMonth || getCurrentYearMonth()
+      const monthBoundary = pendingUploads.some(upload => upload.isMonthBorder)
 
-      // ファイル数とサイズに応じてAPIを選択
-      // 3ファイル以上、または総サイズが3MB以上の場合はバッチAPI使用
-      const totalSize = fileDataArray.reduce((sum, file) => sum + file.content.length, 0)
-      const totalSizeMB = totalSize / (1024 * 1024) // MB変換
-      
-      const shouldUseBatchAPI = fileDataArray.length >= 3 || totalSizeMB > 3
-      const apiEndpoint = shouldUseBatchAPI ? '/api/upload-batch' : '/api/upload'
-      
-      console.log(`📊 Upload decision: ${fileDataArray.length} files, ${totalSizeMB.toFixed(2)}MB total`)
-      console.log(`🔀 Using API: ${apiEndpoint}`)
-      
-      setUploadStatus(`${fileDataArray.length}ファイルを${shouldUseBatchAPI ? 'バッチ' : '一括'}アップロード中...`)
+      // ファイル数に応じてバッチ処理かシングルAPIかを決定
+      const FRONTEND_BATCH_SIZE = 3 // フロントエンドでのバッチサイズ
+      const allResults: any[] = []
+      const allErrors: string[] = []
 
-      // API呼び出し
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(uploadRequest),
-      })
+      if (fileDataArray.length <= FRONTEND_BATCH_SIZE) {
+        // 3ファイル以下は従来のAPIを使用
+        console.log(`📊 Single upload: ${fileDataArray.length} files`)
+        setUploadStatus(`${fileDataArray.length}ファイルを一括アップロード中...`)
 
-      if (!response.ok) {
-        if (response.status === 413) {
-          // Content Too Large エラーの特別処理
-          throw new Error('ファイルサイズが大きすぎます。ファイル数を減らすか、小さなファイルに分割してください。')
+        const uploadRequest: UploadRequest = {
+          files: fileDataArray,
+          yearMonth,
+          monthBoundary,
         }
-        
-        let errorMessage = 'アップロードに失敗しました'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch {
-          // JSON解析失敗時はレスポンステキストを使用
-          errorMessage = await response.text() || errorMessage
-        }
-        throw new Error(errorMessage)
-      }
 
-      const result = await response.json()
-      
-      // バッチ処理の結果に応じてメッセージを変更
-      if (result.success) {
-        // 全て成功
-        setUploadStatus(`✅ ${result.artworks.length}件のファイルをアップロードしました！`)
-      } else if (result.artworks && result.artworks.length > 0) {
-        // 部分的成功（207 Multi-Status）
-        setUploadStatus(`⚠️ ${result.artworks.length}件成功、${result.summary?.failed || 0}件失敗`)
-        
-        // エラー詳細をコンソールに出力
-        if (result.errors) {
-          console.warn('Batch upload errors:', result.errors)
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(uploadRequest),
+        })
+
+        if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error('ファイルサイズが大きすぎます。ファイル数を減らしてください。')
+          }
+          
+          let errorMessage = 'アップロードに失敗しました'
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.error || errorMessage
+          } catch {
+            errorMessage = await response.text() || errorMessage
+          }
+          throw new Error(errorMessage)
         }
+
+        const result = await response.json()
+        if (result.artworks) {
+          allResults.push(...result.artworks)
+        }
+
       } else {
-        throw new Error('すべてのファイルのアップロードに失敗しました')
+        // 4ファイル以上はフロントエンド側でバッチ分割
+        const totalBatches = Math.ceil(fileDataArray.length / FRONTEND_BATCH_SIZE)
+        console.log(`📊 Frontend batch upload: ${fileDataArray.length} files in ${totalBatches} batches`)
+        
+        setUploadProgress({ current: 0, total: totalBatches })
+
+        for (let i = 0; i < totalBatches; i++) {
+          const startIndex = i * FRONTEND_BATCH_SIZE
+          const endIndex = Math.min(startIndex + FRONTEND_BATCH_SIZE, fileDataArray.length)
+          const currentBatch = fileDataArray.slice(startIndex, endIndex)
+          
+          setUploadStatus(`バッチ ${i + 1}/${totalBatches} (${currentBatch.length}ファイル) をアップロード中...`)
+          setUploadProgress({ current: i, total: totalBatches })
+
+          try {
+            const uploadRequest: UploadRequest = {
+              files: currentBatch,
+              yearMonth,
+              monthBoundary: i === 0 ? monthBoundary : false, // 最初のバッチのみmonthBoundaryを適用
+            }
+
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(uploadRequest),
+            })
+
+            if (!response.ok) {
+              if (response.status === 413) {
+                throw new Error(`バッチ ${i + 1}: ファイルサイズが大きすぎます`)
+              }
+              
+              let errorMessage = `バッチ ${i + 1}: アップロードに失敗しました`
+              try {
+                const errorData = await response.json()
+                errorMessage = errorData.error || errorMessage
+              } catch {
+                errorMessage = await response.text() || errorMessage
+              }
+              throw new Error(errorMessage)
+            }
+
+            const result = await response.json()
+            if (result.artworks) {
+              allResults.push(...result.artworks)
+            }
+
+            console.log(`✅ Frontend batch ${i + 1}/${totalBatches} completed: ${result.artworks?.length || 0} files`)
+
+            // バッチ間の短い待機時間（API制限対策）
+            if (i < totalBatches - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500)) // 0.5秒待機
+            }
+
+          } catch (batchError) {
+            console.error(`❌ Frontend batch ${i + 1} failed:`, batchError)
+            allErrors.push(`バッチ${i + 1}: ${batchError instanceof Error ? batchError.message : 'Unknown error'}`)
+            
+            // 1つのバッチが失敗しても続行
+            continue
+          }
+        }
+
+        setUploadProgress({ current: totalBatches, total: totalBatches })
+      }
+
+      // 結果の集計とメッセージ表示
+      const successCount = allResults.length
+      const errorCount = allErrors.length
+
+      if (errorCount === 0) {
+        // 全て成功
+        setUploadStatus(`✅ ${successCount}件のファイルをアップロードしました！`)
+      } else if (successCount > 0) {
+        // 部分的成功
+        setUploadStatus(`⚠️ ${successCount}件成功、${errorCount}件エラー`)
+        console.warn('Frontend batch errors:', allErrors)
+      } else {
+        // 全て失敗
+        throw new Error(`すべてのアップロードに失敗しました: ${allErrors.join(', ')}`)
       }
 
       // 成功時の処理
@@ -238,8 +306,8 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       setManualYearMonth('')
 
       // 追加されたアートワーク（成功分のみ）を既存リストに反映
-      if (result.artworks && result.artworks.length > 0) {
-        const newArtworks = result.artworks.map((artwork: any, index: number) => ({
+      if (allResults.length > 0) {
+        const newArtworks = allResults.map((artwork: any, index: number) => ({
           id: artwork.id,
           filename: artwork.filename,
           comment: artwork.comment,
