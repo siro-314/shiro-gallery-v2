@@ -83,13 +83,15 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         
         // ファイルサイズに応じて初期品質を調整
         const originalSizeKB = Math.round(file.size / 1024)
-        if (originalSizeKB > 2000) quality = 0.7       // 2MB超は品質70%から開始
+        if (originalSizeKB > 5000) quality = 0.6       // 5MB超は品質60%から開始
+        else if (originalSizeKB > 3000) quality = 0.65 // 3MB超は品質65%から開始
+        else if (originalSizeKB > 2000) quality = 0.7  // 2MB超は品質70%から開始
         else if (originalSizeKB > 1000) quality = 0.75 // 1MB超は品質75%から開始
         else if (originalSizeKB > 500) quality = 0.8   // 500KB超は品質80%から開始
         
         let webpBlob: Blob | null = null
         let attempts = 0
-        const maxAttempts = 8 // 最大試行回数
+        const maxAttempts = 12 // 最大試行回数を増加
         
         // 品質を段階的に下げて1MB以内に収まるまで繰り返し
         const processWebP = async (): Promise<void> => {
@@ -109,13 +111,19 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             
             console.log(`🔄 WebP attempt ${attempts}: ${file.name} at quality ${(quality * 100).toFixed(0)}% = ${currentSizeKB}KB`)
             
-            if (currentSizeKB <= 800 || quality <= 0.3) { // 800KB以下または最低品質に達したら完了
+            if (currentSizeKB <= 800 || quality <= 0.2) { // 800KB以下または最低品質に達したら完了
               webpBlob = blob
               break
             }
             
-            // 品質を下げて再試行
-            quality = Math.max(0.3, quality - 0.1) // 最低30%まで
+            // 品質を下げて再試行（より細かく調整）
+            if (currentSizeKB > 1200) {
+              quality = Math.max(0.2, quality - 0.15) // 大きすぎる場合は大幅減
+            } else if (currentSizeKB > 1000) {
+              quality = Math.max(0.2, quality - 0.1)  // 中程度の場合は中程度減
+            } else {
+              quality = Math.max(0.2, quality - 0.05) // 小さな調整
+            }
           }
           
           if (!webpBlob) {
@@ -323,10 +331,15 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             
             let errorMessage = `ファイル ${currentFile.name}: アップロードに失敗しました`
             try {
-              const errorData = await response.json()
-              errorMessage = errorData.error || errorMessage
+              const responseText = await response.text()
+              try {
+                const errorData = JSON.parse(responseText)
+                errorMessage = errorData.error || errorMessage
+              } catch {
+                errorMessage = responseText || errorMessage
+              }
             } catch {
-              errorMessage = await response.text() || errorMessage
+              // レスポンス読み取り失敗時はデフォルトメッセージ
             }
             throw new Error(errorMessage)
           }
@@ -404,11 +417,11 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       console.error('Upload failed:', error)
       setUploadStatus(`エラー: ${error instanceof Error ? error.message : '不明なエラー'}`)
       
-      // 5秒後にエラーメッセージをクリア
+      // 10秒後にエラーメッセージをクリア
       setTimeout(() => {
         setUploadStatus('')
         setUploadProgress(null)
-      }, 5000)
+      }, 10000)
     } finally {
       setIsUploading(false)
       setUploadProgress(null)
