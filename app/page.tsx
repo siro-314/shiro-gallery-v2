@@ -212,73 +212,126 @@ export default function Gallery() {
                 gridTemplateColumns: `repeat(${columns}, 1fr)`,
               }}
             >
-              {artworks.map((artwork, index) => {
-                // 月境目表示の判定（最初の画像でも表示する）
-                const showMonthBoundary = artwork.isMonthBoundary;
-                const monthDisplay = showMonthBoundary ? artwork.yearMonth.split('-')[1] + '月' : null;
-                
-                return (
-                  <React.Fragment key={artwork.id}>
-                    {/* 月境目表示 */}
-                    {showMonthBoundary && (
+              {(() => {
+                // 年月別にグルーピング
+                const groupedByYearMonth: { [key: string]: Artwork[] } = {}
+                artworks.forEach(artwork => {
+                  if (!groupedByYearMonth[artwork.yearMonth]) {
+                    groupedByYearMonth[artwork.yearMonth] = []
+                  }
+                  groupedByYearMonth[artwork.yearMonth].push(artwork)
+                })
+
+                // 年月を新しい順にソート
+                const sortedYearMonths = Object.keys(groupedByYearMonth)
+                  .sort((a, b) => b.localeCompare(a)) // 降順（新しい順）
+
+                const elements: React.ReactElement[] = []
+                let lastYear: number | null = null
+
+                sortedYearMonths.forEach((yearMonth, groupIndex) => {
+                  const [yearStr, monthStr] = yearMonth.split('-')
+                  const year = parseInt(yearStr)
+                  const month = parseInt(monthStr)
+                  const artworksInGroup = groupedByYearMonth[yearMonth]
+
+                  // 年が変わった場合は年を表示（最新年は除く）
+                  const showYear = lastYear !== null && lastYear !== year
+                  
+                  if (showYear) {
+                    elements.push(
                       <div 
-                        className="month-boundary"
+                        key={`year-${year}`}
+                        className="year-separator"
                         style={{
                           gridColumn: `1 / -1`,
                           textAlign: 'center',
-                          padding: '1rem 0',
-                          fontSize: '1.2rem',
-                          fontWeight: '600',
+                          padding: '2rem 0 1rem 0',
+                          fontSize: '1.5rem',
+                          fontWeight: '700',
                           color: 'var(--warm-brown)',
-                          borderBottom: '2px solid var(--cream-bg)',
+                          borderTop: '3px solid var(--warm-brown)',
+                          marginTop: '2rem',
                           marginBottom: '1rem',
                         }}
                       >
-                        {monthDisplay}
+                        {year}年
                       </div>
-                    )}
-                    
-                    {/* 画像カード */}
-                    <div
-                      className={`image-card ${isLandscape(artwork) ? 'landscape' : ''}`}
-                      onClick={() => setSelectedImage(artwork)}
-                      data-month={artwork.yearMonth}
-                    >
-                  {artwork.type === 'image' ? (
-                    <img 
-                      src={artwork.url}
-                      alt={artwork.originalName}
-                      className="artwork-image"
-                      loading="lazy"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                        target.nextElementSibling?.classList.remove('hidden')
+                    )
+                  }
+
+                  // 月の表示
+                  elements.push(
+                    <div 
+                      key={`month-${yearMonth}`}
+                      className="month-boundary"
+                      style={{
+                        gridColumn: `1 / -1`,
+                        textAlign: 'center',
+                        padding: '1rem 0',
+                        fontSize: '1.2rem',
+                        fontWeight: '600',
+                        color: 'var(--warm-brown)',
+                        borderBottom: '2px solid var(--cream-bg)',
+                        marginBottom: '1rem',
                       }}
-                    />
-                  ) : (
-                    <video 
-                      src={artwork.url}
-                      className="artwork-video"
-                      preload="metadata"
-                      muted
-                    />
-                  )}
-                  
-                  {/* フォールバック表示 */}
-                  <div className="image-placeholder hidden">
-                    <div className="image-text">
-                      {artwork.originalName}<br />
-                      {artwork.dimensions ? 
-                        `${artwork.dimensions.width} × ${artwork.dimensions.height}` : 
-                        artwork.type
-                      }
+                      data-month={yearMonth}
+                    >
+                      {month}月
                     </div>
-                  </div>
-                </div>
-              </React.Fragment>
-                )
-              })}
+                  )
+
+                  // その月の画像を追加
+                  artworksInGroup
+                    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()) // 月内では新しい順
+                    .forEach((artwork, artworkIndex) => {
+                      elements.push(
+                        <div
+                          key={artwork.id}
+                          className={`image-card ${isLandscape(artwork) ? 'landscape' : ''}`}
+                          onClick={() => setSelectedImage(artwork)}
+                          data-month={artwork.yearMonth}
+                        >
+                          {artwork.type === 'image' ? (
+                            <img 
+                              src={artwork.url}
+                              alt={artwork.originalName}
+                              className="artwork-image"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                target.nextElementSibling?.classList.remove('hidden')
+                              }}
+                            />
+                          ) : (
+                            <video 
+                              src={artwork.url}
+                              className="artwork-video"
+                              preload="metadata"
+                              muted
+                            />
+                          )}
+                          
+                          {/* フォールバック表示 */}
+                          <div className="image-placeholder hidden">
+                            <div className="image-text">
+                              {artwork.originalName}<br />
+                              {artwork.dimensions ? 
+                                `${artwork.dimensions.width} × ${artwork.dimensions.height}` : 
+                                artwork.type
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+
+                  lastYear = year
+                })
+
+                return elements
+              })()}
             </div>
           )}
         </main>
