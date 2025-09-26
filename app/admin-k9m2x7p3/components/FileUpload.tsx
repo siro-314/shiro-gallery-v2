@@ -111,15 +111,15 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             
             console.log(`🔄 WebP attempt ${attempts}: ${file.name} at quality ${(quality * 100).toFixed(0)}% = ${currentSizeKB}KB`)
             
-            if (currentSizeKB <= 800 || quality <= 0.2) { // 800KB以下または最低品質に達したら完了
+            if (currentSizeKB <= 700 || quality <= 0.2) { // 700KB以下または最低品質に達したら完了
               webpBlob = blob
               break
             }
             
             // 品質を下げて再試行（より細かく調整）
-            if (currentSizeKB > 1200) {
+            if (currentSizeKB > 1000) {
               quality = Math.max(0.2, quality - 0.15) // 大きすぎる場合は大幅減
-            } else if (currentSizeKB > 1000) {
+            } else if (currentSizeKB > 850) {
               quality = Math.max(0.2, quality - 0.1)  // 中程度の場合は中程度減
             } else {
               quality = Math.max(0.2, quality - 0.05) // 小さな調整
@@ -143,8 +143,8 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             console.log(`🖼️ WebP conversion completed: ${file.name}`)
             console.log(`   Original: ${originalSizeKB}KB → WebP: ${webpSizeKB}KB (${reduction}% reduction, ${finalQuality}% quality, ${attempts} attempts)`)
             
-            if (webpSizeKB > 800) {
-              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over 800KB limit)`)
+            if (webpSizeKB > 700) {
+              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over 700KB safe limit)`)
             }
             
             resolve({ 
