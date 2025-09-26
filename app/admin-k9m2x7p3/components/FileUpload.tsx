@@ -39,18 +39,121 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   // 手動年月入力用のstate
   const [manualYearMonth, setManualYearMonth] = useState('')
 
-  // ファイルをBase64に変換
-  const fileToBase64 = (file: File): Promise<string> => {
+  // 画像をWebPに変換してBase64化
+  const fileToWebP = (file: File): Promise<{ base64: string; sizeKB: number; originalSizeKB: number }> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const result = reader.result as string
-        // data:image/jpeg;base64, の部分を除去
-        const base64 = result.split(',')[1]
-        resolve(base64)
+      // 動画の場合はそのまま処理
+      if (file.type.startsWith('video/')) {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = reader.result as string
+          const base64 = result.split(',')[1]
+          const originalSizeKB = Math.round(file.size / 1024)
+          resolve({ 
+            base64, 
+            sizeKB: originalSizeKB, 
+            originalSizeKB 
+          })
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+        return
       }
-      reader.onerror = reject
-      reader.readAsDataURL(file)
+
+      // 画像の場合はWebP変換
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        if (!ctx) {
+          reject(new Error('Canvas context not available'))
+          return
+        }
+
+        // 画像サイズを取得
+        canvas.width = img.width
+        canvas.height = img.height
+        
+        // 画像を描画
+        ctx.drawImage(img, 0, 0)
+        
+        // WebPに変換（段階的品質調整で1MB制限を確実に回避）
+        let quality = 0.85 // 初期品質
+        
+        // ファイルサイズに応じて初期品質を調整
+        const originalSizeKB = Math.round(file.size / 1024)
+        if (originalSizeKB > 2000) quality = 0.7       // 2MB超は品質70%から開始
+        else if (originalSizeKB > 1000) quality = 0.75 // 1MB超は品質75%から開始
+        else if (originalSizeKB > 500) quality = 0.8   // 500KB超は品質80%から開始
+        
+        let webpBlob: Blob | null = null
+        let attempts = 0
+        const maxAttempts = 8 // 最大試行回数
+        
+        // 品質を段階的に下げて1MB以内に収まるまで繰り返し
+        const processWebP = async (): Promise<void> => {
+          while (attempts < maxAttempts) {
+            attempts++
+            
+            const blob = await new Promise<Blob | null>((resolve) => {
+              canvas.toBlob((blob) => resolve(blob), 'image/webp', quality)
+            })
+            
+            if (!blob) {
+              reject(new Error('WebP conversion failed'))
+              return
+            }
+            
+            const currentSizeKB = Math.round(blob.size / 1024)
+            
+            console.log(`🔄 WebP attempt ${attempts}: ${file.name} at quality ${(quality * 100).toFixed(0)}% = ${currentSizeKB}KB`)
+            
+            if (currentSizeKB <= 800 || quality <= 0.3) { // 800KB以下または最低品質に達したら完了
+              webpBlob = blob
+              break
+            }
+            
+            // 品質を下げて再試行
+            quality = Math.max(0.3, quality - 0.1) // 最低30%まで
+          }
+          
+          if (!webpBlob) {
+            reject(new Error('Could not compress image to acceptable size'))
+            return
+          }
+          
+          const reader = new FileReader()
+          reader.onload = () => {
+            const result = reader.result as string
+            const base64 = result.split(',')[1]
+            const webpSizeKB = Math.round(webpBlob!.size / 1024)
+            
+            const reduction = Math.round((1 - webpBlob!.size / file.size) * 100)
+            const finalQuality = Math.round(quality * 100)
+            
+            console.log(`🖼️ WebP conversion completed: ${file.name}`)
+            console.log(`   Original: ${originalSizeKB}KB → WebP: ${webpSizeKB}KB (${reduction}% reduction, ${finalQuality}% quality, ${attempts} attempts)`)
+            
+            if (webpSizeKB > 800) {
+              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over 800KB limit)`)
+            }
+            
+            resolve({ 
+              base64, 
+              sizeKB: webpSizeKB, 
+              originalSizeKB 
+            })
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(webpBlob)
+        }
+        
+        processWebP().catch(reject)
+      }
+      
+      img.onerror = reject
+      img.src = URL.createObjectURL(file)
     })
   }
 
@@ -152,16 +255,33 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       const fileDataArray: FileData[] = []
       
       for (const upload of pendingUploads) {
-        setUploadStatus(`${upload.filename} を変換中...`)
+        setUploadStatus(`${upload.filename} を WebP変換中...`)
         
-        const base64Content = await fileToBase64(upload.file)
+        const { base64: base64Content, sizeKB, originalSizeKB } = await fileToWebP(upload.file)
+        
+        // 大幅な圧縮が行われた場合の通知
+        const reduction = Math.round((1 - (sizeKB * 1024) / upload.file.size) * 100)
+        if (reduction > 70) {
+          setUploadStatus(`${upload.filename} を最適化しました (${reduction}% 圧縮)`)
+          // 少し長めに表示
+          await new Promise(resolve => setTimeout(resolve, 800))
+        }
+        
+        // WebP変換後のファイル名を生成
+        const originalName = upload.filename
+        const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '')
+        const newFilename = upload.file.type.startsWith('video/') 
+          ? originalName // 動画はそのまま
+          : `${nameWithoutExt}.webp` // 画像はWebPに
         
         fileDataArray.push({
-          name: upload.filename,
+          name: newFilename,
           content: base64Content,
-          type: upload.file.type,
+          type: upload.file.type.startsWith('video/') ? upload.file.type : 'image/webp',
           comment: upload.comment || undefined,
         })
+        
+        console.log(`📊 File processed: ${originalName} → ${newFilename} (${originalSizeKB}KB → ${sizeKB}KB)`)
       }
 
       const yearMonth = manualYearMonth || getCurrentYearMonth()
