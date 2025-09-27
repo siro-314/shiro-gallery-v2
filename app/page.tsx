@@ -15,6 +15,7 @@ export default function Gallery() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [targetMonth, setTargetMonth] = useState<string | undefined>()
   const [showModalControls, setShowModalControls] = useState(true)
+  const [showComment, setShowComment] = useState(false) // コメント表示状態
 
   // 環境に応じたデータ取得方法を選択
   const isProduction = process.env.NODE_ENV === 'production'

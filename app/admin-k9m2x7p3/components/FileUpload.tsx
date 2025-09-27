@@ -2,17 +2,14 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { Upload, FileImage, X, Check, MessageSquare, Loader2 } from 'lucide-react'
-import { FileData, UploadRequest } from '../../lib/types'
+import { FileData, UploadRequest, Artwork } from '../../lib/types'
 
-interface Artwork {
+interface PendingArtwork {
   id: string
   filename: string
-  comment?: string
-  isMonthBorder?: boolean
+  comment: string
+  isMonthBorder: boolean
   order: number
-}
-
-interface PendingArtwork extends Artwork {
   file: File
   preview: string
 }
@@ -30,10 +27,17 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 現在の年月を取得
-  const getCurrentYearMonth = () => {
-    const now = new Date()
-    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
+  // デフォルト年月を取得（最新のグループに追加されるように）
+  const getDefaultYearMonth = () => {
+    // 既存のアートワークがある場合、最新のものと同じ年月を使用
+    // ない場合は2024-01をデフォルトにする
+    if (artworks.length > 0) {
+      const latestArtwork = [...artworks].sort((a, b) => 
+        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      )[0];
+      return latestArtwork.yearMonth || '2024-01';
+    }
+    return '2024-01'; // デフォルト
   }
   
   // 手動年月入力用のstate
@@ -111,15 +115,15 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             
             console.log(`🔄 WebP attempt ${attempts}: ${file.name} at quality ${(quality * 100).toFixed(0)}% = ${currentSizeKB}KB`)
             
-            if (currentSizeKB <= 700 || quality <= 0.2) { // 700KB以下または最低品質に達したら完了
+            if (currentSizeKB <= 650 || quality <= 0.2) { // 650KB以下または最低品質に達したら完了
               webpBlob = blob
               break
             }
             
             // 品質を下げて再試行（より細かく調整）
-            if (currentSizeKB > 1000) {
+            if (currentSizeKB > 900) {
               quality = Math.max(0.2, quality - 0.15) // 大きすぎる場合は大幅減
-            } else if (currentSizeKB > 850) {
+            } else if (currentSizeKB > 750) {
               quality = Math.max(0.2, quality - 0.1)  // 中程度の場合は中程度減
             } else {
               quality = Math.max(0.2, quality - 0.05) // 小さな調整
@@ -143,8 +147,8 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             console.log(`🖼️ WebP conversion completed: ${file.name}`)
             console.log(`   Original: ${originalSizeKB}KB → WebP: ${webpSizeKB}KB (${reduction}% reduction, ${finalQuality}% quality, ${attempts} attempts)`)
             
-            if (webpSizeKB > 700) {
-              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over 700KB safe limit)`)
+            if (webpSizeKB > 650) {
+              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over 650KB safe limit)`)
             }
             
             resolve({ 
@@ -292,7 +296,7 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         console.log(`📊 File processed: ${originalName} → ${newFilename} (${originalSizeKB}KB → ${sizeKB}KB)`)
       }
 
-      const yearMonth = manualYearMonth || getCurrentYearMonth()
+      const yearMonth = manualYearMonth || getDefaultYearMonth()
       const monthBoundary = pendingUploads.some(upload => upload.isMonthBorder)
 
       // 安全性優先：すべて1ファイルずつ送信
@@ -394,12 +398,16 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
 
       // 追加されたアートワーク（成功分のみ）を既存リストに反映
       if (allResults.length > 0) {
-        const newArtworks = allResults.map((artwork: any, index: number) => ({
+        const newArtworks: Artwork[] = allResults.map((artwork: any, index: number) => ({
           id: artwork.id,
           filename: artwork.filename,
+          originalName: artwork.originalName || artwork.filename,
+          type: artwork.type || 'image',
+          url: artwork.url || '',
           comment: artwork.comment,
-          order: artworks.length + index,
-          isMonthBorder: artwork.isMonthBoundary || false,
+          uploadedAt: artwork.uploadedAt || new Date().toISOString(),
+          yearMonth: artwork.yearMonth || '2024-01',
+          isMonthBoundary: artwork.isMonthBoundary || false
         }))
 
         setArtworks([...artworks, ...newArtworks])

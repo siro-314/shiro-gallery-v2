@@ -2,14 +2,7 @@
 
 import { useState } from 'react'
 import FileUpload from './components/FileUpload'
-
-interface Artwork {
-  id: string
-  filename: string
-  comment?: string
-  isMonthBorder?: boolean
-  order: number
-}
+import { Artwork } from '../lib/types'
 
 export default function AdminPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([])
