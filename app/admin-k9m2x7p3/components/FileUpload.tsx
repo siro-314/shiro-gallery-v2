@@ -44,7 +44,7 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   const [manualYearMonth, setManualYearMonth] = useState('')
 
   // 画像をWebPに変換してBase64化
-  const fileToWebP = (file: File): Promise<{ base64: string; sizeKB: number; originalSizeKB: number }> => {
+  const fileToWebP = (file: File, comment?: string): Promise<{ base64: string; sizeKB: number; originalSizeKB: number }> => {
     return new Promise((resolve, reject) => {
       // 動画の場合はそのまま処理
       if (file.type.startsWith('video/')) {
@@ -82,8 +82,19 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         // 画像を描画
         ctx.drawImage(img, 0, 0)
         
-        // WebPに変換（段階的品質調整で1MB制限を確実に回避）
-        let quality = 0.85 // 初期品質
+        // コメントのバイトサイズを計算（Base64変換時のオーバーヘッドも考慮）
+        const commentBytes = comment ? new Blob([comment], { type: 'text/plain' }).size : 0
+        const commentKB = Math.round(commentBytes / 1024)
+        
+        // 動的な圧縮目標サイズ：750KB - コメントのバイト数（最小300KB、最大750KB）
+        const targetSizeKB = Math.max(300, Math.min(750, 750 - commentKB))
+        
+        const originalSizeKB = Math.round(file.size / 1024)
+        console.log(`🖼️ Processing image: ${file.name} (${originalSizeKB}KB)`)
+        console.log(`📝 Comment size: ${commentKB}KB, Target compression: ${targetSizeKB}KB`)
+        
+        // 初期品質をファイルサイズに応じて調整
+        let quality = 0.85 // デフォルト品質
         
         // ファイルサイズに応じて初期品質を調整
         const originalSizeKB = Math.round(file.size / 1024)
@@ -113,18 +124,19 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             
             const currentSizeKB = Math.round(blob.size / 1024)
             
-            console.log(`🔄 WebP attempt ${attempts}: ${file.name} at quality ${(quality * 100).toFixed(0)}% = ${currentSizeKB}KB`)
+            console.log(`🔄 WebP attempt ${attempts}: ${file.name} at quality ${(quality * 100).toFixed(0)}% = ${currentSizeKB}KB (target: ${targetSizeKB}KB)`)
             
-            if (currentSizeKB <= 650 || quality <= 0.2) { // 650KB以下または最低品質に達したら完了
+            if (currentSizeKB <= targetSizeKB || quality <= 0.2) { // 目標サイズ以下または最低品質に達したら完了
               webpBlob = blob
               break
             }
             
             // 品質を下げて再試行（より細かく調整）
-            if (currentSizeKB > 900) {
-              quality = Math.max(0.2, quality - 0.15) // 大きすぎる場合は大幅減
-            } else if (currentSizeKB > 750) {
-              quality = Math.max(0.2, quality - 0.1)  // 中程度の場合は中程度減
+            const overshootKB = currentSizeKB - targetSizeKB
+            if (overshootKB > 200) {
+              quality = Math.max(0.2, quality - 0.15) // 大幅に超過している場合は大幅減
+            } else if (overshootKB > 100) {
+              quality = Math.max(0.2, quality - 0.1)  // 中程度超過の場合は中程度減
             } else {
               quality = Math.max(0.2, quality - 0.05) // 小さな調整
             }
@@ -146,9 +158,10 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
             
             console.log(`🖼️ WebP conversion completed: ${file.name}`)
             console.log(`   Original: ${originalSizeKB}KB → WebP: ${webpSizeKB}KB (${reduction}% reduction, ${finalQuality}% quality, ${attempts} attempts)`)
+            console.log(`   Target: ${targetSizeKB}KB, Comment size: ${commentKB}KB`)
             
-            if (webpSizeKB > 650) {
-              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over 650KB safe limit)`)
+            if (webpSizeKB > targetSizeKB) {
+              console.warn(`⚠️ Warning: ${file.name} is still ${webpSizeKB}KB (over ${targetSizeKB}KB target limit)`)
             }
             
             resolve({ 
@@ -269,7 +282,7 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       for (const upload of pendingUploads) {
         setUploadStatus(`${upload.filename} を WebP変換中...`)
         
-        const { base64: base64Content, sizeKB, originalSizeKB } = await fileToWebP(upload.file)
+        const { base64: base64Content, sizeKB, originalSizeKB } = await fileToWebP(upload.file, upload.comment)
         
         // 大幅な圧縮が行われた場合の通知
         const reduction = Math.round((1 - (sizeKB * 1024) / upload.file.size) * 100)

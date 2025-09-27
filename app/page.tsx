@@ -15,7 +15,7 @@ export default function Gallery() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [targetMonth, setTargetMonth] = useState<string | undefined>()
   const [showModalControls, setShowModalControls] = useState(true)
-  const [showComment, setShowComment] = useState(false) // コメント表示状態
+  const [showComment, setShowComment] = useState(false) // コメント表示状態を追加
 
   // 環境に応じたデータ取得方法を選択
   const isProduction = process.env.NODE_ENV === 'production'
@@ -83,6 +83,7 @@ export default function Gallery() {
         setSelectedImage(null)
         setShowColumnDropdown(false)
         setShowCalendar(false)
+        setShowComment(false) // コメント表示もリセット
       }
     }
     
@@ -290,7 +291,10 @@ export default function Gallery() {
                         <div
                           key={artwork.id}
                           className={`image-card ${isLandscape(artwork) ? 'landscape' : ''}`}
-                          onClick={() => setSelectedImage(artwork)}
+                          onClick={() => {
+                            setSelectedImage(artwork)
+                            setShowComment(false) // 新しい画像を開く時はコメント表示をリセット
+                          }}
                           data-month={artwork.yearMonth}
                         >
                           {artwork.type === 'image' ? (
@@ -396,7 +400,13 @@ export default function Gallery() {
         {selectedImage && (
           <div 
             className="image-modal"
-            onClick={() => setSelectedImage(null)}
+            onClick={(e) => {
+              // 背景のクリック時のみモーダルを閉じる
+              if (e.target === e.currentTarget) {
+                setSelectedImage(null)
+                setShowComment(false) // コメント表示もリセット
+              }
+            }}
           >
             <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
               {/* 拡大画像 */}
@@ -445,18 +455,47 @@ export default function Gallery() {
                   {/* 閉じるボタン */}
                   <button 
                     className="modal-close-btn"
-                    onClick={() => setSelectedImage(null)}
+                    onClick={() => {
+                      setSelectedImage(null)
+                      setShowComment(false) // コメント表示もリセット
+                    }}
                   >
                     ×
                   </button>
                   
-                  {/* コメントボタン */}
+                  {/* コメント関連 */}
                   {selectedImage.comment && (
-                    <div className="comment-overlay">
-                      <div className="comment-text">
-                        {selectedImage.comment}
-                      </div>
-                    </div>
+                    <>
+                      {!showComment ? (
+                        /* 吹き出しアイコン */
+                        <button 
+                          className="comment-bubble-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowComment(true)
+                          }}
+                          title="コメントを表示"
+                        >
+                          💬
+                        </button>
+                      ) : (
+                        /* 全文コメント表示 */
+                        <div 
+                          className="comment-overlay"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowComment(false)
+                          }}
+                        >
+                          <div 
+                            className="comment-text"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {selectedImage.comment}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
