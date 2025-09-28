@@ -97,7 +97,6 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         let quality = 0.85 // デフォルト品質
         
         // ファイルサイズに応じて初期品質を調整
-        const originalSizeKB = Math.round(file.size / 1024)
         if (originalSizeKB > 5000) quality = 0.6       // 5MB超は品質60%から開始
         else if (originalSizeKB > 3000) quality = 0.65 // 3MB超は品質65%から開始
         else if (originalSizeKB > 2000) quality = 0.7  // 2MB超は品質70%から開始
