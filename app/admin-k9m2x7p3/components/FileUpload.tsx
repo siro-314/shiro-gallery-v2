@@ -39,6 +39,38 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
     }
     return '2024-01'; // デフォルト
   }
+
+  // 次の月を計算する関数
+  const getNextMonth = (yearMonth: string): string => {
+    const [yearStr, monthStr] = yearMonth.split('-')
+    let year = parseInt(yearStr)
+    let month = parseInt(monthStr)
+    
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+    
+    return `${year}-${month.toString().padStart(2, '0')}`
+  }
+
+  // 月境目を考慮した年月取得
+  const getTargetYearMonth = (hasMonthBoundary: boolean) => {
+    if (manualYearMonth) {
+      return manualYearMonth // 手動入力が優先
+    }
+    
+    const defaultYearMonth = getDefaultYearMonth()
+    
+    if (hasMonthBoundary) {
+      // 境目フラグがある場合は次の月
+      return getNextMonth(defaultYearMonth)
+    } else {
+      // 境目フラグがない場合は同じ月
+      return defaultYearMonth
+    }
+  }
   
   // 手動年月入力用のstate
   const [manualYearMonth, setManualYearMonth] = useState('')
@@ -308,8 +340,14 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
         console.log(`📊 File processed: ${originalName} → ${newFilename} (${originalSizeKB}KB → ${sizeKB}KB)`)
       }
 
-      const yearMonth = manualYearMonth || getDefaultYearMonth()
       const monthBoundary = pendingUploads.some(upload => upload.isMonthBorder)
+      const yearMonth = getTargetYearMonth(monthBoundary)
+
+      console.log(`📅 Upload settings:`)
+      console.log(`   Month Boundary: ${monthBoundary}`)
+      console.log(`   Manual Year-Month: ${manualYearMonth || 'なし'}`)
+      console.log(`   Target Year-Month: ${yearMonth}`)
+      console.log(`   Latest artwork: ${getDefaultYearMonth()}`)
 
       // 安全性優先：すべて1ファイルずつ送信
       const allResults: any[] = []
