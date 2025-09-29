@@ -28,16 +28,16 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // デフォルト年月を取得（最新のグループに追加されるように）
-  const getDefaultYearMonth = () => {
+  const getDefaultYearMonth = (): string | null => {
     // 既存のアートワークがある場合、最新のものと同じ年月を使用
-    // ない場合は2024-01をデフォルトにする
     if (artworks.length > 0) {
       const latestArtwork = [...artworks].sort((a, b) => 
         new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
       )[0];
-      return latestArtwork.yearMonth || '2024-01';
+      return latestArtwork.yearMonth || null;
     }
-    return '2024-01'; // デフォルト
+    // 既存アートワークがない場合はnullを返す（手動入力を強制）
+    return null;
   }
 
   // 次の月を計算する関数
@@ -56,12 +56,17 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
   }
 
   // 月境目を考慮した年月取得
-  const getTargetYearMonth = (hasMonthBoundary: boolean) => {
+  const getTargetYearMonth = (hasMonthBoundary: boolean): string | null => {
     if (manualYearMonth) {
       return manualYearMonth // 手動入力が優先
     }
     
     const defaultYearMonth = getDefaultYearMonth()
+    
+    // 既存アートワークがない場合はnullを返す
+    if (defaultYearMonth === null) {
+      return null;
+    }
     
     if (hasMonthBoundary) {
       // 境目フラグがある場合は次の月
@@ -343,6 +348,14 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
       const monthBoundary = pendingUploads.some(upload => upload.isMonthBorder)
       const yearMonth = getTargetYearMonth(monthBoundary)
 
+      // yearMonthが決定できない場合はエラー
+      if (!yearMonth) {
+        setUploadStatus('エラー: 年月を指定してください')
+        setIsUploading(false)
+        alert('❌ 年月の自動判定ができませんでした。\n\n以下のいずれかを行ってください：\n1. 「年月指定」欄に手動で年月を入力（例: 2024-02）\n2. 既存のアートワークがある状態でアップロード')
+        return
+      }
+
       console.log(`📅 Upload settings:`)
       console.log(`   Month Boundary: ${monthBoundary}`)
       console.log(`   Manual Year-Month: ${manualYearMonth || 'なし'}`)
@@ -584,7 +597,9 @@ export default function FileUpload({ artworks, setArtworks }: FileUploadProps) {
               )}
             </div>
             <p className="text-xs text-amber-600 mt-2">
-              空の場合は自動で現在の年月になります。月の境目は各画像の「月境目」ボタンで指定してください。
+              空の場合は、最新のアートワークと同じ月に追加されます。<br/>
+              「月境目」ボタンを押すと、次の月に自動で切り替わります。<br/>
+              既存アートワークがない場合は、必ず年月を手動入力してください。
             </p>
           </div>
           
