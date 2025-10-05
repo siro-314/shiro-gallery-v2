@@ -60,9 +60,9 @@ body {
 }
 
 .dark .header {
-  background: rgba(45, 42, 38, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: rgba(45, 42, 38, 0.7) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 .header h1 {
@@ -74,7 +74,7 @@ body {
 }
 
 .dark .header h1 {
-  color: var(--dark-warm-brown);
+  color: var(--dark-warm-brown) !important;
 }
 
 .controls {
