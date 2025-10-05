@@ -68,21 +68,15 @@ export default function Gallery() {
   // 常に全データを表示
   const artworks = isProduction ? staticData.artworks : allArtworks
 
-  // レスポンシブ対応
+  // 初期列数をウィンドウサイズに応じて設定（一度だけ）
   useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth
-      if (width < 768) {
-        setColumns(3) // スマホは3列
-      } else {
-        setColumns(7) // PCは7列
-      }
+    const width = window.innerWidth
+    if (width < 768) {
+      setColumns(3) // スマホのデフォルトは3列
+    } else {
+      setColumns(7) // PCのデフォルトは7列
     }
-    
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  }, []) // 空の依存配列で初回のみ実行
 
   // 年の初期化
   useEffect(() => {

@@ -589,7 +589,6 @@ body {
 
 /* レスポンシブ対応 */
 @media (max-width: 1200px) {
-  .image-grid { grid-template-columns: repeat(4, 1fr) !important; }
   .image-card.landscape { grid-column: span 2; }
 }
 
@@ -598,7 +597,6 @@ body {
   .controls { gap: 0.75rem; }
   .btn { padding: 0.6rem 1.2rem; font-size: 0.9rem; }
   .image-grid { 
-    grid-template-columns: repeat(2, 1fr) !important;
     gap: 1rem;
   }
   .image-card.landscape { grid-column: span 2; }
