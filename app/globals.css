@@ -15,6 +15,12 @@
   --warm-light: #f0e6d2;
   --warm-lighter: #e8ddc7;
   
+  /* glass-card用の変数 */
+  --card-bg: rgba(255, 255, 255, 0.3);
+  --card-border: rgba(255, 255, 255, 0.2);
+  --text-primary: #6b5b4d;
+  --text-secondary: #9b8a7a;
+  
   /* ダークモード */
   --dark-bg-gradient-start: #2d2a26;
   --dark-bg-gradient-end: #3a352f;
@@ -38,6 +44,14 @@ body {
   color: var(--dark-warm-brown);
 }
 
+/* ダークモード用の変数上書き */
+.dark {
+  --card-bg: rgba(45, 42, 38, 0.7);
+  --card-border: rgba(255, 255, 255, 0.05);
+  --text-primary: #d4c4b0;
+  --text-secondary: #c0b5a5;
+}
+
 /* より強いダークモード設定 */
 .dark {
   background: linear-gradient(135deg, #2d2a26 0%, #3a352f 100%);
@@ -56,13 +70,11 @@ body {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
 }
 
 .dark .header {
-  background: rgba(45, 42, 38, 0.7) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .header h1 {
@@ -74,7 +86,7 @@ body {
 }
 
 .dark .header h1 {
-  color: var(--dark-warm-brown) !important;
+  color: var(--dark-warm-brown);
 }
 
 .controls {
