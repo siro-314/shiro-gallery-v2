@@ -17,6 +17,21 @@ export default function Gallery() {
   const [showModalControls, setShowModalControls] = useState(true)
   const [showComment, setShowComment] = useState(false) // コメント表示状態を追加
 
+  // システムのダークモード設定を検出して初期化
+  useEffect(() => {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    setIsDarkMode(prefersDark)
+    
+    // システム設定の変更を監視
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches)
+    }
+    
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
   // 環境に応じたデータ取得方法を選択
   const isProduction = process.env.NODE_ENV === 'production'
   

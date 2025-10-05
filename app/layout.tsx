@@ -23,18 +23,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ja">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient">
-          <header className="glass-card border-b border-glass-border mb-8 sticky top-0 z-50">
-            <div className="container mx-auto px-4 py-4">
-              <h1 className="text-2xl font-bold text-center text-glass-text">
-                シロの保管庫
-              </h1>
-            </div>
-          </header>
-          <main className="container mx-auto px-4 pb-8">
-            {children}
-          </main>
-        </div>
+        {children}
       </body>
     </html>
   )
